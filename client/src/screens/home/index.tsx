@@ -1,5 +1,5 @@
 // In src/screens/home/index.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, createRef } from "react";
 import Draggable from "react-draggable";
 import axios from "axios";
 import { Button, Slider } from "@mantine/core";
@@ -42,6 +42,13 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // StrictMode-safe node refs for Draggable items (avoid findDOMNode)
+  const nodeRefs = useRef<Record<string, React.RefObject<HTMLDivElement>>>({});
+  const getNodeRef = (id: string) => {
+    if (!nodeRefs.current[id])
+      nodeRefs.current[id] = createRef<HTMLDivElement>();
+    return nodeRefs.current[id];
+  };
 
   // One-time setup
   useEffect(() => {
@@ -57,7 +64,9 @@ export default function Home() {
       canvas.style.width = width + "px";
       canvas.style.height = height + "px";
 
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", {
+        willReadFrequently: true,
+      }) as CanvasRenderingContext2D | null;
       if (ctx) {
         ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any prior scale
         ctx.scale(dpr, dpr);
@@ -388,19 +397,26 @@ export default function Home() {
       </div>
 
       {/* Draggable results */}
-      {latexExpression.map((l, idx) => (
-        <Draggable
-          key={l.id}
-          defaultPosition={{
-            x: latexPosition.x + idx * 10,
-            y: latexPosition.y + idx * 10,
-          }}
-        >
-          <div className="absolute select-none pointer-events-auto bg-black/40 px-2 py-1 rounded-lg animate-pop-in border border-white/10 shadow">
-            <span dangerouslySetInnerHTML={{ __html: l.text }} />
-          </div>
-        </Draggable>
-      ))}
+      {latexExpression.map((l, idx) => {
+        const nodeRef = getNodeRef(l.id);
+        return (
+          <Draggable
+            key={l.id}
+            nodeRef={nodeRef}
+            defaultPosition={{
+              x: latexPosition.x + idx * 10,
+              y: latexPosition.y + idx * 10,
+            }}
+          >
+            <div
+              ref={nodeRef}
+              className="absolute select-none pointer-events-auto bg-black/40 px-2 py-1 rounded-lg animate-pop-in border border-white/10 shadow"
+            >
+              <span dangerouslySetInnerHTML={{ __html: l.text }} />
+            </div>
+          </Draggable>
+        );
+      })}
     </div>
   );
 }
