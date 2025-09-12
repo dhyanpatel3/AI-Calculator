@@ -32,6 +32,7 @@ app.get("/health", (_req, res) => {
 const PORT = process.env.PORT || 8000;
 
 // Start the server and listen on the defined port. Log a confirmation message to the console.
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const HOST = "localhost"; // bind specifically to localhost per request
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });

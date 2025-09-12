@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Draggable from "react-draggable";
 import axios from "axios";
-import { Button, Group, Stack, Title } from "@mantine/core";
+import { Button, Slider } from "@mantine/core";
 
 const SWATCHES = [
   "#ffffff",
@@ -26,34 +26,51 @@ export default function Home() {
   // Define component state using useState
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState<string>("#ffffff");
+  const [tool, setTool] = useState<"brush" | "eraser">("brush");
+  const [lineWidth, setLineWidth] = useState<number>(4);
   const [dictOfVars, setDictOfVars] = useState<VarDict>({});
   const [latexExpression, setLatexExpression] = useState<LatexItem[]>([]);
   const [latexPosition] = useState<{ x: number; y: number }>({ x: 40, y: 40 });
+  const [history, setHistory] = useState<ImageData[]>([]);
+  const [redoStack, setRedoStack] = useState<ImageData[]>([]);
+  const [toast, setToast] = useState<{
+    message: string;
+    type?: "error" | "info";
+  } | null>(null);
 
   // Create a ref for the canvas element: canvasRef.
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   // One-time setup
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    const width = Math.min(1024, window.innerWidth - 80);
-    const height = Math.min(768, window.innerHeight - 220);
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
+    const setup = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
+      const dpr = window.devicePixelRatio || 1;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
 
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.scale(dpr, dpr);
-      ctx.lineCap = "round";
-      ctx.lineWidth = 4;
-      ctx.strokeStyle = color;
-      ctxRef.current = ctx;
-    }
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // reset any prior scale
+        ctx.scale(dpr, dpr);
+        ctx.lineCap = "round";
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = color;
+        ctxRef.current = ctx;
+      }
+    };
+
+    setup();
+    const onResize = () => setup();
+    window.addEventListener("resize", onResize);
 
     // MathJax loader (configure BEFORE loading script)
     const w = window as any;
@@ -80,7 +97,9 @@ export default function Home() {
       }
     }
     // Do not remove MathJax script on unmount to avoid reload issues
-    return () => {};
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,6 +107,11 @@ export default function Home() {
   useEffect(() => {
     if (ctxRef.current) ctxRef.current.strokeStyle = color;
   }, [color]);
+
+  // Update stroke width on change
+  useEffect(() => {
+    if (ctxRef.current) ctxRef.current.lineWidth = lineWidth;
+  }, [lineWidth]);
 
   // Re-typeset on latex change
   useEffect(() => {
@@ -105,8 +129,21 @@ export default function Home() {
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const ctx = ctxRef.current;
-    if (!ctx) return;
+    const canvas = canvasRef.current;
+    if (!ctx || !canvas) return;
+    // snapshot BEFORE drawing starts so undo returns to prior state
+    try {
+      const snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setHistory((h) => [...h, snap]);
+      setRedoStack([]);
+    } catch {}
     setIsDrawing(true);
+    // set composite mode based on tool
+    ctx.globalCompositeOperation =
+      tool === "eraser" ? "destination-out" : "source-over";
+    if (tool === "brush") {
+      ctx.strokeStyle = color;
+    }
     const { x, y } = getPos(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -125,6 +162,46 @@ export default function Home() {
     if (!ctx) return;
     setIsDrawing(false);
     ctx.closePath();
+  };
+
+  // Undo/Redo helpers
+  const restoreImage = (img: ImageData) => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+    ctx.putImageData(img, 0, 0);
+  };
+
+  const undo = () => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      const prev = h[h.length - 1];
+      // push current to redo
+      try {
+        const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setRedoStack((r) => [...r, current]);
+      } catch {}
+      restoreImage(prev);
+      return h.slice(0, -1);
+    });
+  };
+
+  const redo = () => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+    setRedoStack((r) => {
+      if (r.length === 0) return r;
+      const next = r[r.length - 1];
+      try {
+        const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        setHistory((h) => [...h, current]);
+      } catch {}
+      restoreImage(next);
+      return r.slice(0, -1);
+    });
   };
 
   // Main API call
@@ -170,58 +247,160 @@ export default function Home() {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
+    // make reset undoable
+    try {
+      const current = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      setHistory((h) => [...h, current]);
+      setRedoStack([]);
+    } catch {}
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setLatexExpression([]);
     setDictOfVars({});
   };
 
+  // Keyboard shortcuts: Ctrl/Cmd+Z (undo), Ctrl+Shift+Z or Ctrl+Y (redo), Ctrl+Enter (run), Ctrl+Backspace/Delete (reset)
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const ctrlOrCmd = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+      if (ctrlOrCmd && key === "z") {
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        e.preventDefault();
+      } else if (ctrlOrCmd && key === "y") {
+        redo();
+        e.preventDefault();
+      } else if (ctrlOrCmd && key === "enter") {
+        runRoute();
+        e.preventDefault();
+      } else if (ctrlOrCmd && (key === "backspace" || key === "delete")) {
+        reset();
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <Stack gap="md" className="p-4">
-      <Title order={2}>AI iPad Calculator</Title>
-      <Group>
+    <div
+      ref={containerRef}
+      className="relative w-screen h-screen bg-black text-white overflow-hidden"
+    >
+      {/* Toast */}
+      {toast && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
+          <div
+            className={`px-4 py-2 rounded-md shadow border ${
+              toast.type === "error"
+                ? "bg-red-500/20 border-red-400 text-red-200"
+                : "bg-white/10 border-white/20 text-white"
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
+      {/* Full-screen canvas */}
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0"
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+      />
+
+      {/* Top-centered palette */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
+        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/15 rounded-full px-3 py-2 shadow-lg">
+          {SWATCHES.map((c) => {
+            const active = c.toLowerCase() === color.toLowerCase();
+            return (
+              <button
+                key={c}
+                className={`w-7 h-7 rounded-full border border-white/20 transition-transform hover:scale-105 ${
+                  active ? "ring-2 ring-white" : ""
+                }`}
+                style={{ background: c }}
+                onClick={() => {
+                  setColor(c);
+                  setTool("brush");
+                }}
+                aria-label={`Pick ${c}`}
+                aria-pressed={active}
+              />
+            );
+          })}
+          <div className="w-px h-6 bg-white/20 mx-1" />
+          <Button
+            size="xs"
+            variant={tool === "eraser" ? "filled" : "light"}
+            color="gray"
+            onClick={() =>
+              setTool((t) => (t === "eraser" ? "brush" : "eraser"))
+            }
+          >
+            {tool === "eraser" ? "Eraser: ON" : "Eraser"}
+          </Button>
+          <div className="flex items-center gap-2 w-36">
+            <span className="text-xs text-white/70">Size</span>
+            <Slider
+              min={1}
+              max={24}
+              step={1}
+              value={lineWidth}
+              onChange={setLineWidth}
+              className="flex-1"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Controls bottom-right */}
+      <div className="absolute bottom-6 right-6 z-20 flex gap-2">
+        <Button
+          onClick={undo}
+          variant="light"
+          color="gray"
+          disabled={history.length === 0}
+        >
+          Undo
+        </Button>
+        <Button
+          onClick={redo}
+          variant="light"
+          color="gray"
+          disabled={redoStack.length === 0}
+        >
+          Redo
+        </Button>
         <Button onClick={reset} variant="light" color="gray">
           Reset
         </Button>
         <Button onClick={runRoute} color="blue">
           Run
         </Button>
-        <Group gap="xs">
-          {SWATCHES.map((c) => (
-            <button
-              key={c}
-              className="w-6 h-6 rounded-full border border-white/20"
-              style={{ background: c }}
-              onClick={() => setColor(c)}
-              aria-label={`Pick ${c}`}
-            />
-          ))}
-        </Group>
-      </Group>
-
-      <div className="relative">
-        <canvas
-          ref={canvasRef}
-          className="rounded-xl border border-white/10 bg-surface"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-        />
-
-        {latexExpression.map((l, idx) => (
-          <Draggable
-            key={l.id}
-            defaultPosition={{
-              x: latexPosition.x + idx * 10,
-              y: latexPosition.y + idx * 10,
-            }}
-          >
-            <div className="absolute select-none pointer-events-auto bg-black/30 px-2 py-1 rounded-lg animate-pop-in">
-              <span dangerouslySetInnerHTML={{ __html: l.text }} />
-            </div>
-          </Draggable>
-        ))}
       </div>
-    </Stack>
+
+      {/* Draggable results */}
+      {latexExpression.map((l, idx) => (
+        <Draggable
+          key={l.id}
+          defaultPosition={{
+            x: latexPosition.x + idx * 10,
+            y: latexPosition.y + idx * 10,
+          }}
+        >
+          <div className="absolute select-none pointer-events-auto bg-black/40 px-2 py-1 rounded-lg animate-pop-in border border-white/10 shadow">
+            <span dangerouslySetInnerHTML={{ __html: l.text }} />
+          </div>
+        </Draggable>
+      ))}
+    </div>
   );
 }
