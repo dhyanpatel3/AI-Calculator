@@ -41,6 +41,7 @@ export default function Home() {
     type?: "error" | "info";
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showOnboard, setShowOnboard] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("theme");
@@ -311,6 +312,10 @@ export default function Home() {
   // Keyboard shortcuts: Ctrl/Cmd+Z (undo), Ctrl+Shift+Z or Ctrl+Y (redo), Ctrl+Enter (run), Ctrl+Backspace/Delete (reset)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (showOnboard && e.key === "Escape") {
+        setShowOnboard(false);
+        return;
+      }
       const ctrlOrCmd = e.ctrlKey || e.metaKey;
       const key = e.key.toLowerCase();
       if (ctrlOrCmd && key === "z") {
@@ -347,6 +352,40 @@ export default function Home() {
           <Loader color="blue" size="lg" />
         </div>
       )}
+      {/* Onboarding popup */}
+      {showOnboard && (
+        <div
+          className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboard-title"
+        >
+          <div className="max-w-2xl w-[92%] sm:w-[640px] rounded-3xl border border-white/10 bg-white/5 dark:bg-white/5 text-white shadow-xl p-6 sm:p-8">
+            <h2
+              id="onboard-title"
+              className="text-xl sm:text-2xl font-semibold mb-4 text-white"
+            >
+              Welcome to AI Calculator
+            </h2>
+            <ul className="text-base sm:text-lg space-y-3 text-white/90 list-disc list-inside">
+              <li>Draw a math problem on the canvas.</li>
+              <li>Click Run to get the answer.</li>
+              <li>Drag answers to reposition them.</li>
+              <li>Use Undo/Redo to fix strokes.</li>
+              <li>Use Eraser to remove parts.</li>
+            </ul>
+            <div className="mt-5 flex justify-end">
+              <Button
+                size="md"
+                color="blue"
+                onClick={() => setShowOnboard(false)}
+              >
+                Got it
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Toast */}
       {toast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
@@ -370,7 +409,6 @@ export default function Home() {
         onMouseUp={stopDrawing}
         onMouseLeave={stopDrawing}
       />
-
       {/* Top-left logo */}
       <div className="absolute top-5 left-14 z-20">
         <h1 className="text-gray-900 dark:text-white text-xl sm:text-3xl font-extrabold tracking-wide select-none">
