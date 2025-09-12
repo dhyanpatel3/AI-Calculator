@@ -383,33 +383,39 @@ export default function Home() {
               className="flex-1"
             />
           </div>
+          <div className="w-px h-6 bg-white/20 mx-1" />
+          {/* Aligned control buttons inside the color bar */}
+          <Button
+            size="xs"
+            onClick={undo}
+            variant="light"
+            color="gray"
+            disabled={history.length === 0 || loading}
+          >
+            Undo
+          </Button>
+          <Button
+            size="xs"
+            onClick={redo}
+            variant="light"
+            color="gray"
+            disabled={redoStack.length === 0 || loading}
+          >
+            Redo
+          </Button>
+          <Button
+            size="xs"
+            onClick={reset}
+            variant="light"
+            color="gray"
+            disabled={loading}
+          >
+            Reset
+          </Button>
+          <Button size="xs" onClick={runRoute} color="blue" disabled={loading}>
+            Run
+          </Button>
         </div>
-      </div>
-
-      {/* Controls bottom-right */}
-      <div className="absolute bottom-6 right-6 z-20 flex gap-2">
-        <Button
-          onClick={undo}
-          variant="light"
-          color="gray"
-          disabled={history.length === 0 || loading}
-        >
-          Undo
-        </Button>
-        <Button
-          onClick={redo}
-          variant="light"
-          color="gray"
-          disabled={redoStack.length === 0 || loading}
-        >
-          Redo
-        </Button>
-        <Button onClick={reset} variant="light" color="gray" disabled={loading}>
-          Reset
-        </Button>
-        <Button onClick={runRoute} color="blue" disabled={loading}>
-          Run
-        </Button>
       </div>
 
       {/* Draggable results */}
