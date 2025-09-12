@@ -41,6 +41,13 @@ export default function Home() {
     type?: "error" | "info";
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("theme");
+      if (saved === "light" || saved === "dark") return saved;
+    }
+    return "dark";
+  });
 
   // Create a ref for the canvas element: canvasRef.
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -121,6 +128,21 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Apply theme class to <html> and persist preference
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+      root.style.colorScheme = "dark";
+    } else {
+      root.classList.remove("dark");
+      root.style.colorScheme = "light";
+    }
+    try {
+      localStorage.setItem("theme", theme);
+    } catch {}
+  }, [theme]);
 
   // Update stroke color on change
   useEffect(() => {
@@ -317,7 +339,7 @@ export default function Home() {
   return (
     <div
       ref={containerRef}
-      className="relative w-screen h-screen bg-black text-white overflow-hidden"
+      className="relative w-screen h-screen overflow-hidden bg-white text-gray-900 dark:bg-black dark:text-white"
     >
       {/* Loading overlay */}
       {loading && (
@@ -349,9 +371,16 @@ export default function Home() {
         onMouseLeave={stopDrawing}
       />
 
+      {/* Top-left logo */}
+      <div className="absolute top-5 left-14 z-20">
+        <h1 className="text-gray-900 dark:text-white text-xl sm:text-3xl font-extrabold tracking-wide select-none">
+          AI Calculator.
+        </h1>
+      </div>
+
       {/* Top-centered palette */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20">
-        <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/15 rounded-full px-3 py-2 shadow-lg">
+        <div className="flex items-center gap-3 bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/10 dark:border-white/15 rounded-full px-3 py-2 shadow-lg">
           {SWATCHES.map((c) => {
             const active = c.toLowerCase() === color.toLowerCase();
             return (
@@ -382,7 +411,9 @@ export default function Home() {
             {tool === "eraser" ? "Eraser: ON" : "Eraser"}
           </Button>
           <div className="flex items-center gap-2 w-36">
-            <span className="text-xs text-white/70">Size</span>
+            <span className="text-xs text-gray-700 dark:text-white/70">
+              Size
+            </span>
             <Slider
               min={1}
               max={24}
@@ -424,8 +455,30 @@ export default function Home() {
           <Button size="xs" onClick={runRoute} color="blue" disabled={loading}>
             Run
           </Button>
+          <div className="w-px h-6 bg-white/20 mx-1" />
         </div>
       </div>
+
+      {/* Top-right GitHub button */}
+      <a
+        href="https://github.com/dhyanpatel3/AI-Calculator"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute top-5 right-12 z-20 group"
+        aria-label="Open GitHub repository"
+        title="Open GitHub repository"
+      >
+        <div className="p-2 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15 hover:bg-black/10 dark:hover:bg-white/20 transition-colors shadow">
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="w-5 h-5 text-gray-900 dark:text-white"
+            fill="currentColor"
+          >
+            <path d="M12 .5C5.73.5.98 5.24.98 11.52c0 4.86 3.15 8.98 7.52 10.43.55.1.75-.24.75-.53 0-.26-.01-1.12-.02-2.04-3.06.66-3.71-1.3-3.71-1.3-.5-1.28-1.22-1.62-1.22-1.62-1-.69.08-.68.08-.68 1.1.08 1.68 1.13 1.68 1.13.98 1.67 2.57 1.19 3.2.91.1-.71.38-1.19.69-1.46-2.44-.28-5-1.22-5-5.43 0-1.2.43-2.17 1.13-2.94-.11-.28-.49-1.42.11-2.95 0 0 .92-.3 3.02 1.12a10.5 10.5 0 0 1 5.5 0c2.1-1.42 3.02-1.12 3.02-1.12.6 1.53.22 2.67.11 2.95.7.77 1.13 1.74 1.13 2.94 0 4.22-2.57 5.15-5.01 5.42.39.34.73 1 .73 2.02 0 1.46-.01 2.64-.01 3 0 .29.2.64.76.53 4.36-1.45 7.51-5.57 7.51-10.43C23.02 5.24 18.27.5 12 .5z" />
+          </svg>
+        </div>
+      </a>
 
       {/* Draggable results */}
       {latexExpression.map((l, idx) => {
