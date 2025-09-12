@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, createRef } from "react";
 import Draggable from "react-draggable";
 import axios from "axios";
-import { Button, Slider } from "@mantine/core";
+import { Button, Slider, Loader } from "@mantine/core";
 
 const SWATCHES = [
   "#ffffff",
@@ -37,6 +37,7 @@ export default function Home() {
     message: string;
     type?: "error" | "info";
   } | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Create a ref for the canvas element: canvasRef.
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -217,6 +218,7 @@ export default function Home() {
   async function runRoute() {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    setLoading(true);
     const dataUrl = canvas.toDataURL("image/png");
     try {
       const res = await axios.post(
@@ -249,6 +251,14 @@ export default function Home() {
     } catch (err: any) {
       const data = err?.response?.data;
       console.error("API error", err?.message || err, data);
+      // Optional: quick toast for visibility
+      setToast({
+        message: "Unable to analyze right now. Please try again.",
+        type: "error",
+      });
+      setTimeout(() => setToast(null), 2500);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -300,6 +310,12 @@ export default function Home() {
       ref={containerRef}
       className="relative w-screen h-screen bg-black text-white overflow-hidden"
     >
+      {/* Loading overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <Loader color="blue" size="lg" />
+        </div>
+      )}
       {/* Toast */}
       {toast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
@@ -376,7 +392,7 @@ export default function Home() {
           onClick={undo}
           variant="light"
           color="gray"
-          disabled={history.length === 0}
+          disabled={history.length === 0 || loading}
         >
           Undo
         </Button>
@@ -384,14 +400,14 @@ export default function Home() {
           onClick={redo}
           variant="light"
           color="gray"
-          disabled={redoStack.length === 0}
+          disabled={redoStack.length === 0 || loading}
         >
           Redo
         </Button>
-        <Button onClick={reset} variant="light" color="gray">
+        <Button onClick={reset} variant="light" color="gray" disabled={loading}>
           Reset
         </Button>
-        <Button onClick={runRoute} color="blue">
+        <Button onClick={runRoute} color="blue" disabled={loading}>
           Run
         </Button>
       </div>
