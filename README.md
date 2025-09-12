@@ -1,4 +1,4 @@
-# iPad Calculator (MERN + Gemini)
+# AI Calculator (MERN + Gemini)
 
 Full-stack AI-powered calculator with a canvas frontend and an Express backend that uses Google Gemini to interpret drawings and solve math problems.
 
