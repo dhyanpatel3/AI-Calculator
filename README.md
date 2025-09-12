@@ -2,64 +2,107 @@
 
 Full-stack AI-powered calculator with a canvas frontend and an Express backend that uses Google Gemini to interpret drawings and solve math problems.
 
+## Features
+
+  - **Canvas Input:** Draw mathematical equations, expressions, or even abstract concepts on the canvas.
+  - **AI-Powered Solving:** Utilizes the Google Gemini API to analyze the drawings and provide solutions.
+  - **Multiple Problem Types:**
+      - Simple mathematical expressions (e.g., 2 + 2).
+      - Algebraic equations (e.g., x^2 + 2x + 1 = 0).
+      - Variable assignments (e.g., x = 4).
+      - Graphical math problems.
+      - Abstract concept detection.
+  - **Interactive UI:**
+      - Draggable LaTeX results.
+      - Color palette for drawing.
+      - Brush and eraser tools.
+      - Adjustable line width.
+      - Undo/Redo functionality.
+  - **Keyboard Shortcuts:**
+      - `Ctrl/Cmd + Z`: Undo
+      - `Ctrl/Cmd + Shift + Z` or `Ctrl/Cmd + Y`: Redo
+      - `Ctrl + Enter`: Run calculation
+      - `Ctrl + Backspace/Delete`: Reset canvas
+
+## Tech Stack
+
+  - **Frontend:**
+      - React
+      - Vite
+      - TypeScript
+      - Mantine (for UI components)
+      - Tailwind CSS
+      - Axios
+      - React Draggable
+  - **Backend:**
+      - Node.js
+      - Express
+      - @google/generative-ai
+      - CORS
+      - Dotenv
+
 ## Prerequisites
 
-- Node.js 18+ and npm
-- A Google Gemini API key
+  - Node.js v18+ and npm
+  - A Google Gemini API key
 
-## Backend (server)
+## Getting Started
 
-1. Copy `server/.env` and set your key:
-   - `GEMINI_API_KEY="YOUR_GOOGLE_GEMINI_API_KEY"`
-   - `PORT=8000` (optional)
-2. Install and run:
+### Backend (server)
 
-```powershell
-cd server
-npm install
-npm start
-```
+1.  Navigate to the `server` directory:
+    ```bash
+    cd server
+    ```
+2.  Install the dependencies:
+    ```bash
+    npm install
+    ```
+3.  Create a `.env` file in the `server` directory and add your Google Gemini API key:
+    ```
+    GEMINI_API_KEY="YOUR_GOOGLE_GEMINI_API_KEY"
+    PORT=8000
+    ```
+4.  Start the server:
+    ```bash
+    npm start
+    ```
+    The server will be running on http://localhost:8000. You can check the health of the server at http://localhost:8000/health.
 
-Server will run on http://localhost:8000
+### Frontend (client)
 
-Health check: http://localhost:8000/health
+1.  Navigate to the `client` directory:
+    ```bash
+    cd client
+    ```
+2.  Install the dependencies:
+    ```bash
+    npm install
+    ```
+3.  The client is configured to connect to the backend at `http://localhost:8000` by default, as specified in `client/.env`. If your backend is running on a different port, update this file accordingly.
+4.  Start the development server:
+    ```bash
+    npm run dev
+    ```
+    The application will be running on http://localhost:5173.
 
-## Frontend (client)
+## How It Works
 
-1. Install dependencies:
-
-```powershell
-cd client
-npm install
-```
-
-2. Configure API URL (already set by default): `client/.env`
-
-```
-VITE_API_URL=http://localhost:8000
-```
-
-3. Start the dev server:
-
-```powershell
-npm run dev
-```
-
-Open http://localhost:5173
-
-## How it works
-
-- Draw equations or math problems on the canvas and click "Run".
-- The canvas image is sent to the backend (`/api/calculate`).
-- The backend calls Gemini with a strict prompt and returns parsed JSON.
-- The UI renders results as draggable LaTeX labels and assigns variable values when provided.
+1.  The user draws an equation or math problem on the HTML canvas in the frontend.
+2.  When the "Run" button is clicked, the canvas content is converted to a base64 PNG image.
+3.  This image data is sent to the backend via a POST request to the `/api/calculate` endpoint.
+4.  The Express server receives the request and passes the image to the `analyzeImage` function.
+5.  This function sends the image along with a detailed prompt to the Google Gemini API.
+6.  The Gemini API processes the image, solves the mathematical problem, and returns a JSON response.
+7.  The backend parses the JSON and sends it back to the frontend.
+8.  The React UI then renders the results as draggable LaTeX labels on the screen.
 
 ## Notes
 
-- Increase request body size in `server/index.js` (currently 10mb) if needed.
-- If Gemini returns non-JSON text, the backend currently returns an empty array; you can add fallback parsing in `server/utils/gemini-analyzer.js`.
-- Tailwind theme is a minimal approximation. If you have a reference theme, we can replicate it exactly.
+  - The request body size limit in `server/index.js` is currently set to 20mb to accommodate large image data.
+  - The `gemini-analyzer.js` utility includes a fallback mechanism to try different Gemini models if the default one fails.
+  - The Tailwind CSS theme is a minimal approximation.
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
