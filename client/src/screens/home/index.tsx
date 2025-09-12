@@ -30,7 +30,10 @@ export default function Home() {
   const [lineWidth, setLineWidth] = useState<number>(4);
   const [dictOfVars, setDictOfVars] = useState<VarDict>({});
   const [latexExpression, setLatexExpression] = useState<LatexItem[]>([]);
-  const [latexPosition] = useState<{ x: number; y: number }>({ x: 40, y: 40 });
+  const [latexPosition, setLatexPosition] = useState<{ x: number; y: number }>({
+    x: 40,
+    y: 40,
+  });
   const [history, setHistory] = useState<ImageData[]>([]);
   const [redoStack, setRedoStack] = useState<ImageData[]>([]);
   const [toast, setToast] = useState<{
@@ -76,6 +79,12 @@ export default function Home() {
         ctx.strokeStyle = color;
         ctxRef.current = ctx;
       }
+
+      // default label position: slightly below the vertical center
+      const centerX = Math.floor(width / 2);
+      const centerY = Math.floor(height / 2);
+      const offsetY = Math.max(40, Math.floor(height * 0.08));
+      setLatexPosition({ x: centerX, y: centerY + offsetY });
     };
 
     setup();
