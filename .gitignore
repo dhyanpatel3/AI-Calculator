@@ -1,0 +1,16 @@
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Env
+.env
+server/.env
+client/.env
+
+# Build outputs
+dist/
+client/dist/
+
+# Editor
+.vscode/
