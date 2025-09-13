@@ -1,4 +1,4 @@
-# AI Calculator (MERN + Gemini)
+# AI Calculator 
 
 Full-stack AI-powered calculator with a canvas frontend and an Express backend that uses Google Gemini to interpret drawings and solve math problems.
 
