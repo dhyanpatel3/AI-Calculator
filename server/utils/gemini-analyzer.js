@@ -5,7 +5,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Initialize a new GoogleGenerativeAI instance with the API key from process.env.GEMINI_API_KEY.
 const API_KEY = process.env.GEMINI_API_KEY || "";
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 // Function to convert a base64 data URL to a GoogleGenerativeAI.Part object.
